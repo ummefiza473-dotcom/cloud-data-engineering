@@ -2,11 +2,10 @@
 --  RETAILMART — SQL CAPSTONE PROJECT
 --  Industry : Retail (3-store chain)
 --  Duration : 3 Hours
---  Covers   : DDL, DML, SELECT, JOINs, GROUP BY, ROLLUP, CUBE,
---             GROUPING SETS, Subqueries, EXISTS/ANY/ALL,
---             UNION/INTERSECT/EXCEPT, CTEs, Recursive CTEs,
+--  Covers   : DDL, DML, SELECT, JOINs, GROUP BY, Subqueries, 
+--             UNION/INTERSECT/EXCEPT, CTEs,
 --             Window Functions, PIVOT, Views, Indexes,
---             Stored Procedures, Error Handling, Transactions
+--             Stored Procedures
 -- ============================================================
 --  STORY:
 --  You are a data analyst at RetailMart — a retail chain with
