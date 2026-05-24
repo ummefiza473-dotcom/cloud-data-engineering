@@ -271,23 +271,11 @@ DELETE FROM retailmart.orders       WHERE order_id = 8;
 -- ============================================================
 
 -- All products under Rs. 5,000
-SELECT product_name, price
-FROM retailmart.products
-WHERE price < 5000
-ORDER BY price ASC;
+
 
 -- Customers from Karachi
-SELECT full_name, email, city
-FROM retailmart.customers
-WHERE city = 'Karachi'
-ORDER BY full_name;
 
 -- Orders placed in 2024 sorted by date descending
-SELECT o.order_id, c.full_name, o.order_date, o.status
-FROM retailmart.orders o
-JOIN retailmart.customers c ON o.customer_id = c.customer_id
-WHERE YEAR(o.order_date) = 2024
-ORDER BY o.order_date DESC;
 
 
 -- ============================================================
@@ -295,67 +283,21 @@ ORDER BY o.order_date DESC;
 -- ============================================================
 
 -- INNER JOIN: Orders with customer name and product details
-SELECT
-    o.order_id,
-    c.full_name       AS customer_name,
-    p.product_name,
-    oi.quantity,
-    oi.unit_price,
-    oi.quantity * oi.unit_price AS line_total
-FROM retailmart.orders      o
-INNER JOIN retailmart.customers   c  ON o.customer_id  = c.customer_id
-INNER JOIN retailmart.order_items oi ON o.order_id     = oi.order_id
-INNER JOIN retailmart.products    p  ON oi.product_id  = p.product_id;
+
 
 -- LEFT JOIN: All customers including those with no orders
-SELECT
-    c.full_name,
-    c.city,
-    COUNT(o.order_id) AS total_orders
-FROM retailmart.customers c
-LEFT JOIN retailmart.orders o ON c.customer_id = o.customer_id
-GROUP BY c.full_name, c.city
-ORDER BY total_orders DESC;
 
 -- RIGHT JOIN: All products including those never ordered
-SELECT
-    p.product_name,
-    p.price,
-    SUM(oi.quantity) AS total_sold
-FROM retailmart.order_items oi
-RIGHT JOIN retailmart.products p ON oi.product_id = p.product_id
-GROUP BY p.product_name, p.price
-ORDER BY total_sold DESC;
+
 
 
 -- ============================================================
 --  TASK 5: GROUP BY + CASE
 -- ============================================================
 
--- Total revenue by store and category with ROLLUP subtotals
-SELECT
-    ISNULL(s.store_name,  'ALL STORES')    AS store,
-    ISNULL(cat.category_name, 'ALL CATEGORIES') AS category,
-    SUM(oi.quantity * oi.unit_price)        AS revenue
-FROM retailmart.orders      o
-JOIN retailmart.stores      s   ON o.store_id   = s.store_id
-JOIN retailmart.order_items oi  ON o.order_id   = oi.order_id
-JOIN retailmart.products    p   ON oi.product_id = p.product_id
-JOIN retailmart.categories  cat ON p.category_id = cat.category_id
-GROUP BY s.store_name, cat.category_name
-ORDER BY store, category;
+-- Total revenue by store and category 
 
 -- Label each product as Budget / Mid-range / Premium using CASE
-SELECT
-    product_name,
-    price,
-    CASE
-        WHEN price < 3000   THEN 'Budget'
-        WHEN price < 20000  THEN 'Mid-range'
-        ELSE                     'Premium'
-    END AS price_tier
-FROM retailmart.products
-ORDER BY price;
 
 
 
@@ -363,30 +305,10 @@ ORDER BY price;
 --  TASK 7: Subqueries 
 -- ============================================================
 
--- Customers who have placed at least one order (EXISTS)
-SELECT full_name, email, city
-FROM retailmart.customers c
-WHERE EXISTS (
-    SELECT 1 FROM retailmart.orders o
-    WHERE o.customer_id = c.customer_id
-);
 
 
 -- Orders where the total exceeds the average order value (subquery in WHERE)
-SELECT order_id, total
-FROM (
-    SELECT order_id, SUM(quantity * unit_price) AS total
-    FROM retailmart.order_items
-    GROUP BY order_id
-) AS order_totals
-WHERE total > (
-    SELECT AVG(order_total)
-    FROM (
-        SELECT order_id, SUM(quantity * unit_price) AS order_total
-        FROM retailmart.order_items
-        GROUP BY order_id
-    ) AS avg_base
-);
+
 
 
 -- ============================================================
@@ -394,22 +316,12 @@ WHERE total > (
 -- ============================================================
 
 -- UNION: All unique cities where we have customers OR stores
-SELECT city AS location, 'Customer city' AS source
-FROM retailmart.customers
-UNION
-SELECT city, 'Store city'
-FROM retailmart.stores
-ORDER BY location;
+
 
 -- INTERSECT: Customers who ordered from BOTH store 1 AND store 2
-SELECT customer_id FROM retailmart.orders WHERE store_id = 1
-INTERSECT
-SELECT customer_id FROM retailmart.orders WHERE store_id = 2;
 
 -- EXCEPT: Customers who have NEVER placed an order
-SELECT customer_id FROM retailmart.customers
-EXCEPT
-SELECT DISTINCT customer_id FROM retailmart.orders;
+
 
 
 -- ============================================================
@@ -421,35 +333,6 @@ SELECT DISTINCT customer_id FROM retailmart.orders;
 -- ============================================================
 
 -- Regular CTE: Top 5 customers by total spend
-WITH customer_spend AS (
-    SELECT
-        c.customer_id,
-        c.full_name,
-        SUM(oi.quantity * oi.unit_price) AS total_spend
-    FROM retailmart.customers c
-    JOIN retailmart.orders      o  ON c.customer_id  = o.customer_id
-    JOIN retailmart.order_items oi ON o.order_id     = oi.order_id
-    GROUP BY c.customer_id, c.full_name
-)
-SELECT TOP 5
-    full_name,
-    total_spend,
-    RANK() OVER (ORDER BY total_spend DESC) AS spend_rank
-FROM customer_spend
-ORDER BY total_spend DESC;
-
--- Recursive CTE: Generate months from Jan 2024 to Dec 2024
-WITH months AS (
-    SELECT CAST('2024-01-01' AS DATE) AS month_start
-    UNION ALL
-    SELECT DATEADD(MONTH, 1, month_start)
-    FROM months
-    WHERE month_start < '2024-12-01'
-)
-SELECT
-    month_start,
-    FORMAT(month_start, 'MMMM yyyy') AS month_name
-FROM months;
 
 
 -- ============================================================
@@ -457,30 +340,11 @@ FROM months;
 -- ============================================================
 
 -- ROW_NUMBER and RANK: Products ranked by revenue
-SELECT
-    p.product_name,
-    SUM(oi.quantity * oi.unit_price)                            AS revenue,
-    ROW_NUMBER() OVER (ORDER BY SUM(oi.quantity * oi.unit_price) DESC) AS row_num,
-    RANK()       OVER (ORDER BY SUM(oi.quantity * oi.unit_price) DESC) AS revenue_rank
-FROM retailmart.order_items oi
-JOIN retailmart.products    p ON oi.product_id = p.product_id
-GROUP BY p.product_name;
+
 
 
 -- Running total of revenue by store
-SELECT
-    s.store_name,
-    FORMAT(o.order_date, 'yyyy-MM')         AS month,
-    SUM(oi.quantity * oi.unit_price)         AS monthly_revenue,
-    SUM(SUM(oi.quantity * oi.unit_price))
-        OVER (PARTITION BY s.store_name
-              ORDER BY FORMAT(o.order_date,'yyyy-MM')
-            )      AS running_total
-FROM retailmart.orders      o
-JOIN retailmart.stores      s  ON o.store_id    = s.store_id
-JOIN retailmart.order_items oi ON o.order_id    = oi.order_id
-GROUP BY s.store_name, FORMAT(o.order_date, 'yyyy-MM')
-ORDER BY s.store_name, month;
+
 
 
 
@@ -489,45 +353,14 @@ ORDER BY s.store_name, month;
 -- ============================================================
 
 -- Standard view: Order summary
-CREATE VIEW retailmart.vw_OrderSummary AS
-SELECT
-    o.order_id,
-    o.order_date,
-    o.status,
-    s.store_name,
-    c.full_name        AS customer_name,
-    c.city             AS customer_city,
-    p.product_name,
-    cat.category_name,
-    oi.quantity,
-    oi.unit_price,
-    oi.quantity * oi.unit_price AS line_total
-FROM retailmart.orders      o
-JOIN retailmart.stores      s   ON o.store_id    = s.store_id
-JOIN retailmart.customers   c   ON o.customer_id = c.customer_id
-JOIN retailmart.order_items oi  ON o.order_id    = oi.order_id
-JOIN retailmart.products    p   ON oi.product_id = p.product_id
-JOIN retailmart.categories  cat ON p.category_id = cat.category_id;
+
 
 -- Use the view
-SELECT store_name, SUM(line_total) AS total_revenue
-FROM retailmart.vw_OrderSummary
-GROUP BY store_name
-ORDER BY total_revenue DESC;
+
 
 -- Indexed (materialized) view: Store revenue totals
 -- Note: Requires SCHEMABINDING + unique clustered index
-CREATE VIEW retailmart.vw_StoreRevenue
-SELECT
-    o.store_id,
-    COUNT(*)                             AS order_count,
-    SUM(oi.quantity * oi.unit_price)         AS total_revenue
-FROM retailmart.orders      o
-JOIN retailmart.order_items oi ON o.order_id = oi.order_id
-GROUP BY o.store_id;
 
-CREATE UNIQUE CLUSTERED INDEX idx_vw_StoreRevenue
-ON retailmart.vw_StoreRevenue(store_id);
 
 
 -- ============================================================
@@ -535,17 +368,11 @@ ON retailmart.vw_StoreRevenue(store_id);
 -- ============================================================
 
 -- Composite index: Speed up queries filtering by customer + date
-CREATE INDEX idx_orders_customer_date
-ON retailmart.orders(customer_id, order_date);
+
 
 -- Filtered index: Only index Pending orders (partial index)
-CREATE INDEX idx_orders_pending
-ON retailmart.orders(order_date, store_id)
-WHERE status = 'Pending';
 
 -- Non-clustered index on customer email for fast lookups
-CREATE INDEX idx_customers_email
-ON retailmart.customers(email);
 
 -- Verify indexes
 EXEC sp_helpindex 'retailmart.orders';
@@ -556,116 +383,9 @@ EXEC sp_helpindex 'retailmart.customers';
 --  TASK 14: Stored Procedures + Error Handling
 -- ============================================================
 
--- Procedure 1: Place an order with stock check + TRY/CATCH + TRANSACTION
-CREATE PROCEDURE retailmart.sp_PlaceOrder
-    @CustomerID INT,
-    @StoreID    INT,
-    @ProductID  INT,
-    @Quantity   INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    DECLARE @CurrentStock INT;
-    DECLARE @Price        DECIMAL(10,2);
-    DECLARE @NewOrderID   INT;
-
-    BEGIN TRY
-        BEGIN TRANSACTION;
-
-        -- Get current stock and price
-        SELECT @CurrentStock = stock_qty, @Price = price
-        FROM retailmart.products
-        WHERE product_id = @ProductID;
-
-        -- Check if product exists
-        IF @CurrentStock IS NULL
-        BEGIN
-            RAISERROR('Product not found.', 16, 1);
-            RETURN;
-        END
-
-        -- Check if enough stock is available
-        IF @CurrentStock < @Quantity
-        BEGIN
-            RAISERROR('Not enough stock. Available: %d, Requested: %d', 16, 1,
-                      @CurrentStock, @Quantity);
-            RETURN;
-        END
-
-        -- Insert the order
-        INSERT INTO retailmart.orders (store_id, customer_id, order_date, status)
-        VALUES (@StoreID, @CustomerID, GETDATE(), 'Pending');
-
-        SET @NewOrderID = SCOPE_IDENTITY();
-
-        -- Insert order item
-        INSERT INTO retailmart.order_items (order_id, product_id, quantity, unit_price)
-        VALUES (@NewOrderID, @ProductID, @Quantity, @Price);
-
-        -- Deduct stock
-        UPDATE retailmart.products
-        SET stock_qty = stock_qty - @Quantity
-        WHERE product_id = @ProductID;
-
-        COMMIT TRANSACTION;
-
-        SELECT 'Order placed successfully' AS Message,
-               @NewOrderID                AS NewOrderID;
-
-    END TRY
-    BEGIN CATCH
-        ROLLBACK TRANSACTION;
-        SELECT
-            ERROR_NUMBER()  AS ErrorNumber,
-            ERROR_MESSAGE() AS ErrorMessage;
-    END CATCH
-END;
-
--- Test: Valid order
-EXEC retailmart.sp_PlaceOrder
-    @CustomerID = 1,
-    @StoreID    = 1,
-    @ProductID  = 6,
-    @Quantity   = 5;
-
--- Test: Should fail — not enough stock
-EXEC retailmart.sp_PlaceOrder
-    @CustomerID = 1,
-    @StoreID    = 1,
-    @ProductID  = 2,
-    @Quantity   = 999;
 
 
--- Procedure 2: Monthly sales report for a store
-CREATE PROCEDURE retailmart.sp_MonthlySalesReport
-    @StoreID INT,
-    @Year    INT = 2024
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF NOT EXISTS (SELECT 1 FROM retailmart.stores WHERE store_id = @StoreID)
-    BEGIN
-        SELECT 'Store not found' AS Message;
-        RETURN;
-    END
-
-    SELECT
-        FORMAT(o.order_date, 'yyyy-MM')         AS month,
-        COUNT(DISTINCT o.order_id)               AS total_orders,
-        SUM(oi.quantity)                         AS units_sold,
-        SUM(oi.quantity * oi.unit_price)         AS revenue,
-        SUM(SUM(oi.quantity * oi.unit_price))
-            OVER (ORDER BY FORMAT(o.order_date,'yyyy-MM')
-                  ROWS UNBOUNDED PRECEDING)      AS running_total
-    FROM retailmart.orders      o
-    JOIN retailmart.order_items oi ON o.order_id = oi.order_id
-    WHERE o.store_id = @StoreID
-      AND YEAR(o.order_date) = @Year
-    GROUP BY FORMAT(o.order_date, 'yyyy-MM')
-    ORDER BY month;
-END;
+-- Procedure 1: Monthly sales report for a store
 
 -- Test the report for Store 1 (Karachi)
 EXEC retailmart.sp_MonthlySalesReport @StoreID = 1, @Year = 2024;
@@ -677,19 +397,19 @@ EXEC retailmart.sp_MonthlySalesReport @StoreID = 2;
 -- ============================================================
 --  END OF CAPSTONE PROJECT
 -- ============================================================
--- Congratulations! You have covered:
+--  You have covered:
 --  DDL         CREATE TABLE, constraints, data types
 --  DML         INSERT, UPDATE, DELETE, MERGE
 --  Querying    SELECT, WHERE, ORDER BY
 --  Joins       INNER, LEFT, RIGHT
 --  Aggregation GROUP BY, ROLLUP, CUBE, GROUPING SETS
 --  CASE        Price tier labelling
---  Subqueries  Inline, EXISTS, ALL
+--  Subqueries  Inline
 --  Set ops     UNION, INTERSECT, EXCEPT
---  CTEs        Regular + Recursive
---  Windows     ROW_NUMBER, RANK, LAG, LEAD, FIRST_VALUE, SUM OVER
+--  CTEs        Regular 
+--  Windows     ROW_NUMBER, RANK
 --  PIVOT       Monthly revenue matrix
 --  Views       Standard + Indexed
 --  Indexes     Composite, Filtered, Non-clustered
---  Procedures  Parameters, defaults, TRY/CATCH, TRANSACTION
+--  Procedures  Parameters, defaults
 -- ============================================================
